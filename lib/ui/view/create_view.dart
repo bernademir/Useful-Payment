@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:usefullpayment/ui/widget/qr_form_widget.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:usefullpayment/bloc/qr_bloc.dart';
+import 'package:usefullpayment/bloc/qr_state.dart';
+import 'package:usefullpayment/ui/widget/product_form_widget.dart';
 import 'package:usefullpayment/ui/widget/qr_image_widget.dart';
 
 class CreateView extends StatefulWidget {
@@ -8,24 +11,33 @@ class CreateView extends StatefulWidget {
 }
 
 class _CreateViewState extends State<CreateView> {
-  String _product = "";
-  void _productCallback(product) {
-    setState(() {
-      _product = product;
-    });
+  late final QrBloc _qrBloc;
+
+  QrState get initialState => QrState.id();
+
+  Widget _createPage() {
+    return BlocBuilder(
+      bloc: _qrBloc,
+      builder: (BuildContext context, QrState state) {
+        return Column(
+          children: <Widget>[
+            ProductFormWidget(
+              category: state.formButton,
+            ),
+            QRImageWidget(
+              product: state.serializedProduct,
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Expanded(
-            flex: 1,
-            child: QrFormWidget(
-              serializedCallback: _productCallback,
-            )),
-        Expanded(flex: 4, child: QRImageWidget(product: _product)),
-      ],
+    return BlocProvider<QrBloc>(
+      create: (context) => QrBloc(initialState),
+      child: _createPage(),
     );
   }
 }

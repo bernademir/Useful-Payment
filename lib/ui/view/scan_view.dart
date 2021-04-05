@@ -17,22 +17,18 @@ class _ScanViewState extends State<ScanView> {
   List<CameraDescription> cameras = [];
   late CameraController controller;
   bool isCameraInitialized = false;
-  late Product _product;
+  Product _product = Product(0, "", 0.0);
 
   @override
   Widget build(BuildContext context) {
     if (!isCameraInitialized)
       return Container();
     else
-      return ListView(
-        children: [
-          Column(
-            children: <Widget>[
-              Expanded(flex: 3, child: _qrArea(context)),
-              Expanded(flex: 1, child: _cameraButton())
-            ],
-          ),
-          ScannedProductWidget(product: _product)
+      return Column(
+        children: <Widget>[
+          Expanded(flex: 2, child: _qrArea(context)),
+          Expanded(flex: 1, child: _cameraButton()),
+          Expanded(flex: 2, child: ScannedProductWidget(product: _product))
         ],
       );
   }
@@ -120,8 +116,7 @@ class _ScanViewState extends State<ScanView> {
   Future<File?> _cropImage(File imageFile) async {
     return await ImageCropper.cropImage(
       sourcePath: imageFile.path,
-      // ratioX: 1.0,
-      // ratioY: 1.0,
+      aspectRatio: CropAspectRatio(ratioX: 1.0, ratioY: 1.0),
       maxWidth: 250,
       maxHeight: 250,
     );
