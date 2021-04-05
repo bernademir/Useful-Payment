@@ -1,4 +1,12 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:usefullpayment/core/api/firebase_qr_detector.dart';
+import 'package:usefullpayment/core/api/firebase_storage.dart';
+import 'package:usefullpayment/core/model/product.dart';
+import 'package:usefullpayment/ui/widget/scanned_product_widget.dart';
 
 class ScanView extends StatefulWidget {
   @override
@@ -6,14 +14,27 @@ class ScanView extends StatefulWidget {
 }
 
 class _ScanViewState extends State<ScanView> {
+  List<CameraDescription> cameras = [];
+  late CameraController controller;
+  bool isCameraInitialized = false;
+  late Product _product;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Expanded(flex: 3, child: _qrArea(context)),
-        Expanded(flex: 1, child: _cameraButton())
-      ],
-    );
+    if (!isCameraInitialized)
+      return Container();
+    else
+      return ListView(
+        children: [
+          Column(
+            children: <Widget>[
+              Expanded(flex: 3, child: _qrArea(context)),
+              Expanded(flex: 1, child: _cameraButton())
+            ],
+          ),
+          ScannedProductWidget(product: _product)
+        ],
+      );
   }
 
   _qrArea(BuildContext context) {
@@ -43,11 +64,66 @@ class _ScanViewState extends State<ScanView> {
 
   _cameraButton() {
     return IconButton(
-      onPressed: () {},
+      onPressed: () {
+        saveQrCode().then((filePath) {
+          _cropImage(File(filePath!)).then((croppedImage) {
+            FirebaseQrDetector(croppedImage!, _productCallback).detectQrCode();
+          });
+        });
+      },
       icon: Icon(
         Icons.camera_alt,
         size: 50,
       ),
+    );
+  }
+
+  void _productCallback(product) {
+    if (product != null)
+      setState(() {
+        _product = product;
+      });
+  }
+
+  void _initializeController() {
+    controller = CameraController(cameras[0], ResolutionPreset.medium);
+    controller.initialize().then((_) {
+      if (!mounted) return;
+      setState(() {
+        isCameraInitialized = true;
+      });
+    });
+  }
+
+  _getCameras() async {
+    cameras = await availableCameras();
+    if (cameras.length > 0) _initializeController();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getCameras();
+  }
+
+  Future<String?> saveQrCode() async {
+    final String filePath = await FirebaseStorage.getFilePath();
+    if (controller.value.isTakingPicture) return null;
+    try {
+      await controller.takePicture();
+    } on CameraException catch (e) {
+      throw Exception('Failed to capture image: $e');
+    }
+    return filePath;
+  }
+
+  Future<File?> _cropImage(File imageFile) async {
+    return await ImageCropper.cropImage(
+      sourcePath: imageFile.path,
+      // ratioX: 1.0,
+      // ratioY: 1.0,
+      maxWidth: 250,
+      maxHeight: 250,
     );
   }
 }
